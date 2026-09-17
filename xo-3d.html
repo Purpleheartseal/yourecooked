@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D XO — Tic-Tac-Toe Cube</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: #0b1020;
+    color: #dbe6ff;
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    padding: 14px 18px 16px;
+    background: rgba(13, 20, 42, 0.72);
+    border: 1px solid rgba(120, 160, 255, 0.22);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  }
+  #hud h1 {
+    margin: 0 0 6px; font-size: 21px; letter-spacing: 2px; font-weight: 800;
+    background: linear-gradient(90deg, #22d3ee, #fb7185);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  #status.end, #status.error { position: absolute; top: calc(100% + 12px); left: 0; transform: none; width: max-content; max-width: 80vw; height: auto; clip-path: none; padding: 10px 16px; border-radius: 12px; background: #192440; z-index: 11; }
+  #settings .player { padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; font-weight: 400; }
+  #settings .player.active { font-weight: 800; background: rgba(103,232,249,.1); border-color: #42577e; }
+  .player-symbol { font-size: 20px; min-width: 22px; }
+  #player-x .player-symbol { color: #22d3ee; }
+  #player-o .player-symbol { color: #fb7185; }
+  #delta-seat .player-symbol { color: #c4b5fd; }
+  #sound { position: fixed; top: 16px; right: 16px; z-index: 12; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #42577e; border-radius: 50%; background: #192440; color: #dbe6ff; cursor: pointer; }
+  #sound svg { width: 24px; height: 24px; }
+  #sound[aria-pressed="true"] .muted, #sound[aria-pressed="false"] .waves { display: none; }
+  button:focus-visible, select:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
+  #status.x { color: #22d3ee; }
+  #status.o { color: #fb7185; }
+  #status.end { color: #ffffff; }
+  #status.delta, #score .delta { color: #c4b5fd; }
+  #settings { display: grid; gap: 8px; margin-top: 12px; }
+  #settings label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+  select { color: #dbe6ff; background: #192440; border: 1px solid #42577e; border-radius: 6px; padding: 5px; }
+  #rules { max-width: 235px; font-size: 12px; line-height: 1.5; color: #a8bada; margin: 10px 0 0; }
+  [hidden] { display: none !important; }
+  #score { margin-top: 4px; font-size: 13px; opacity: .85; }
+  #score .x { color: #22d3ee; font-weight: 700; }
+  #score .o { color: #fb7185; font-weight: 700; }
+  #restart {
+    margin-top: 12px; width: 100%; padding: 7px 0;
+    font: inherit; font-size: 13px; font-weight: 600; color: #dbe6ff;
+    background: rgba(90, 130, 255, 0.16);
+    border: 1px solid rgba(120, 160, 255, 0.35); border-radius: 9px;
+    cursor: pointer; transition: background .15s;
+  }
+  #restart:hover { background: rgba(90, 130, 255, 0.3); }
+  #hint {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    font-size: 12px; letter-spacing: .4px; color: rgba(190, 210, 255, 0.55);
+    white-space: nowrap;
+  }
+  @media (max-width: 480px) { #hint { display: none; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="status" role="status" aria-live="polite">X's turn</div>
+  <div id="score" hidden><span id="sx">0</span><span id="so">0</span><span id="delta-score" hidden><span id="sd">0</span></span></div>
+  <div id="settings">
+    <label>Players <select id="player-count"><option value="2">2 players</option><option value="3">3 players</option></select></label>
+    <label id="player-x" class="player active"><span class="player-symbol">X</span> <select id="seat-x"><option value="human">Human</option><option value="ai">AI</option></select></label>
+    <label id="player-o" class="player"><span class="player-symbol">O</span> <select id="seat-o"><option value="human">Human</option><option value="ai" selected>AI</option></select></label>
+    <label id="delta-seat" class="player" hidden><span class="player-symbol">Δ</span> <select id="seat-d"><option value="human">Human</option><option value="ai" selected>AI</option></select></label>
+  </div>
+  <p id="rules" hidden>Connect any straight line of 3. Turn order: X → O. Changing settings starts a new match and clears scores.</p>
+  <button id="restart">↻ Restart round</button>
+</div>
+<button id="sound" type="button" aria-pressed="true" aria-label="Toggle sound">
+  <svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false">
+    <path class="speaker" fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"/>
+    <path class="waves" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/>
+    <path class="muted" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9l6 6M22 9l-6 6"/>
+  </svg>
+</button>
+<div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; click a cell to play</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script id="ai-worker" type="text/plain">
+self.onmessage = ({ data: { board, lines, player, count } }) => {
+  const empty = board.flatMap((value, i) => value === -1 ? [i] : []);
+  if (!empty.length) return self.postMessage({ move: null });
+  const deadline = Date.now() + 500;
+  let nodes = 0;
+  const WIN = 1000000;
+  const weights = [0, 2, 24, 400];
+
+  function winner() {
+    for (const [a, b, c] of lines)
+      if (board[a] !== -1 && board[a] === board[b] && board[a] === board[c]) return board[a];
+    return -1;
+  }
+
+  function evaluate() {
+    const values = Array(count).fill(0);
+    for (const line of lines) {
+      let owner = -1, marks = 0, blocked = false;
+      for (const cell of line) {
+        if (board[cell] === -1) continue;
+        if (owner !== -1 && owner !== board[cell]) { blocked = true; break; }
+        owner = board[cell];
+        marks++;
+      }
+      if (!blocked && owner !== -1) values[owner] += weights[marks];
+    }
+    return values.map((value, p) => value - values.reduce((sum, other, q) => sum + (q === p ? 0 : other), 0) / (count - 1));
+  }
+
+  function orderedMoves(turn) {
+    const choices = [];
+    for (let move = 0; move < board.length; move++) {
+      if (board[move] !== -1) continue;
+      let priority = 0;
+      for (const line of lines) {
+        if (!line.includes(move)) continue;
+        priority++;
+        const others = line.filter(i => i !== move).map(i => board[i]);
+        if (others.every(p => p === turn)) priority += 10000;
+        else if (others[0] !== -1 && others[0] === others[1])
+          priority += others[0] === (turn + 1) % count ? 1000 : 500;
+      }
+      choices.push({ move, priority });
+    }
+    return choices.sort((a, b) => b.priority - a.priority || a.move - b.move).map(c => c.move);
+  }
+
+  function search(turn, depth, ply, alpha, beta) {
+    if (++nodes > 70000 || Date.now() > deadline) throw new Error('budget');
+    const won = winner();
+    if (won !== -1) return Array.from({ length: count }, (_, p) => p === won ? WIN - ply : -WIN + ply);
+    if (!board.includes(-1)) return Array(count).fill(0);
+    if (!depth) return evaluate();
+    let best = null;
+    for (const move of orderedMoves(turn)) {
+      board[move] = turn;
+      let value;
+      try { value = search((turn + 1) % count, depth - 1, ply + 1, alpha, beta); }
+      finally { board[move] = -1; }
+      if (!best || value[turn] > best[turn]) best = value;
+      // Two players have zero-sum utilities; Maxⁿ cannot use this pruning for three players.
+      if (count === 2) {
+        if (turn === player) alpha = Math.max(alpha, best[player]);
+        else beta = Math.min(beta, best[player]);
+        if (alpha >= beta) break;
+      }
+    }
+    return best;
+  }
+
+  const choices = orderedMoves(player);
+  let bestMove = choices[0], completedDepth = 0;
+  for (let depth = 1; depth <= Math.min(empty.length, count === 2 ? 6 : 5); depth++) {
+    let candidate = bestMove, bestValue = -Infinity, alpha = -Infinity;
+    try {
+      for (const move of [bestMove, ...choices.filter(m => m !== bestMove)]) {
+        board[move] = player;
+        let values;
+        try { values = search((player + 1) % count, depth - 1, 1, alpha, Infinity); }
+        finally { board[move] = -1; }
+        if (values[player] > bestValue) { bestValue = values[player]; candidate = move; }
+        if (count === 2) alpha = Math.max(alpha, bestValue);
+      }
+    } catch (error) {
+      if (error.message !== 'budget') throw error;
+      break;
+    }
+    bestMove = candidate;
+    completedDepth = depth;
+    if (bestValue > WIN / 2) break;
+  }
+  self.postMessage({ move: bestMove, depth: completedDepth });
+};
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------- scene ---------- */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1020);
+scene.fog = new THREE.Fog(0x0b1020, 22, 46);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(7.5, 6.5, 9.5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 6;
+controls.maxDistance = 30;
+controls.autoRotate = true; // showcase spin until the first click
+controls.autoRotateSpeed = 1.2;
+
+scene.add(new THREE.HemisphereLight(0x99aaff, 0x101528, 1.2));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(6, 10, 8); scene.add(key);
+const fill = new THREE.DirectionalLight(0x66aaff, 0.8); fill.position.set(-8, -6, -6); scene.add(fill);
+
+/* ---------- board: 3x3x3 cells ---------- */
+const SPACING = 2.3;
+const cellGroup = new THREE.Group();
+scene.add(cellGroup);
+
+const cellGeo = new THREE.BoxGeometry(1, 1, 1);
+const edgeGeo = new THREE.EdgesGeometry(cellGeo);
+
+const cells = [];      // { mesh, mat, edgeMat, x, y, z, piece, pieceObj }
+const cellMeshes = []; // raycast targets
+
+for (let x = 0; x < 3; x++)
+for (let y = 0; y < 3; y++)
+for (let z = 0; z < 3; z++) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x3a4d7a, transparent: true, opacity: 0.07, roughness: 0.35, metalness: 0.15
+  });
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x5f7fb8, transparent: true, opacity: 0.3 });
+  const mesh = new THREE.Mesh(cellGeo, mat);
+  mesh.position.set((x - 1) * SPACING, (y - 1) * SPACING, (z - 1) * SPACING);
+  mesh.add(new THREE.LineSegments(edgeGeo, edgeMat));
+  mesh.userData.idx = cells.length;
+  cellGroup.add(mesh);
+  cells.push({ mesh, mat, edgeMat, x, y, z, piece: null, pieceObj: null });
+  cellMeshes.push(mesh);
+}
+
+/* ---------- pieces ---------- */
+const COLORS = { X: 0x22d3ee, O: 0xfb7185, 'Δ': 0xc4b5fd };
+const xGeo = new THREE.CapsuleGeometry(0.1, 0.95, 6, 14);
+const oGeo = new THREE.TorusGeometry(0.48, 0.11, 18, 40);
+
+function makePiece(player) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: COLORS[player], emissive: COLORS[player], emissiveIntensity: 0.35,
+    roughness: 0.25, metalness: 0.35
+  });
+  const obj = new THREE.Group();
+  if (player === 'X') {
+    const a = new THREE.Mesh(xGeo, mat); a.rotation.z =  Math.PI / 4;
+    const b = new THREE.Mesh(xGeo, mat); b.rotation.z = -Math.PI / 4;
+    obj.add(a, b);
+  } else if (player === 'O') {
+    obj.add(new THREE.Mesh(oGeo, mat));
+  } else {
+    const vertices = [new THREE.Vector3(0, 0.58, 0), new THREE.Vector3(-0.5, -0.34, 0), new THREE.Vector3(0.5, -0.34, 0)];
+    for (let i = 0; i < 3; i++) {
+      const a = vertices[i], b = vertices[(i + 1) % 3];
+      const bar = new THREE.Mesh(xGeo, mat);
+      bar.position.copy(a).add(b).multiplyScalar(0.5);
+      bar.scale.y = a.distanceTo(b) / 1.15;
+      bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+      obj.add(bar);
+    }
+  }
+  return obj;
+}
+
+/* ---------- winning lines: all 49 straight lines of 3 through the cube ---------- */
+const LINES = (() => {
+  const dirs = [];
+  for (let dx = -1; dx <= 1; dx++)
+  for (let dy = -1; dy <= 1; dy++)
+  for (let dz = -1; dz <= 1; dz++) {
+    if (!dx && !dy && !dz) continue;
+    if ((dx || dy || dz) < 0) continue; // keep one of each ± direction pair
+    dirs.push([dx, dy, dz]);
+  }
+  const inB = (x, y, z) => x >= 0 && x < 3 && y >= 0 && y < 3 && z >= 0 && z < 3;
+  const idx = (x, y, z) => x * 9 + y * 3 + z;
+  const lines = [];
+  for (let x = 0; x < 3; x++)
+  for (let y = 0; y < 3; y++)
+  for (let z = 0; z < 3; z++)
+    for (const [dx, dy, dz] of dirs)
+      if (inB(x + 2 * dx, y + 2 * dy, z + 2 * dz))
+        lines.push([idx(x, y, z), idx(x + dx, y + dy, z + dz), idx(x + 2 * dx, y + 2 * dy, z + 2 * dz)]);
+  return lines;
+})();
+
+/* ---------- game state ---------- */
+let current = 'X';
+let moves = 0;
+let gameOver = false;
+const score = { X: 0, O: 0, 'Δ': 0 };
+let players = ['X', 'O'];
+const seatEls = Object.fromEntries([['X', 'seat-x'], ['O', 'seat-o'], ['Δ', 'seat-d']].map(([p, id]) => [p, document.getElementById(id)]));
+let aiWorker = null;
+let aiTimer = null;
+let generation = 0;
+let aiFailed = false;
+const workerUrl = URL.createObjectURL(new Blob([document.getElementById('ai-worker').textContent], { type: 'text/javascript' }));
+let winFx = null; // { cyl, objs } glowing line + winning pieces
+
+const statusEl = document.getElementById('status');
+const sxEl = document.getElementById('sx');
+const soEl = document.getElementById('so');
+
+function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls; }
+function isAITurn() { return seatEls[current].value === 'ai'; }
+const playerRows = { X: document.getElementById('player-x'), O: document.getElementById('player-o'), 'Δ': document.getElementById('delta-seat') };
+function updateTurnUI() {
+  statusEl.className = '';
+  statusEl.textContent = '';
+  for (const player of players) playerRows[player].classList.toggle('active', player === current && !gameOver);
+}
+
+function cancelAI() {
+  generation++;
+  clearTimeout(aiTimer);
+  aiTimer = null;
+  if (aiWorker) aiWorker.terminate();
+  aiWorker = null;
+}
+
+function scheduleAI() {
+  if (gameOver || !isAITurn()) return;
+  setHover(null);
+  controls.autoRotate = false;
+  const ticket = generation;
+  const turn = current;
+  const fail = () => {
+    if (ticket !== generation) return;
+    cancelAI();
+    aiFailed = true;
+    updateTurnUI();
+  };
+  aiTimer = setTimeout(() => {
+    if (ticket !== generation || gameOver || current !== turn) return;
+    try {
+      const worker = new Worker(workerUrl);
+      aiWorker = worker;
+      aiTimer = setTimeout(fail, 4000);
+      worker.onerror = fail;
+      worker.onmessage = ({ data }) => {
+        if (ticket !== generation || gameOver || current !== turn) return;
+        clearTimeout(aiTimer);
+        worker.terminate();
+        aiWorker = null;
+        const cell = Number.isInteger(data.move) ? cells[data.move] : null;
+        if (!cell || cell.piece) return fail();
+        play(cell);
+      };
+      worker.postMessage({ board: cells.map(c => c.piece === null ? -1 : players.indexOf(c.piece)), lines: LINES, player: players.indexOf(turn), count: players.length });
+    } catch { fail(); }
+  }, 250);
+}
+
+/* ---------- interaction ---------- */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+
+function pick(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
+  pointer.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(cellMeshes, false)[0];
+  return hit ? cells[hit.object.userData.idx] : null;
+}
+
+function setHover(cell) {
+  if (hovered === cell) return;
+  if (hovered) { hovered.mat.opacity = 0.07; hovered.edgeMat.opacity = 0.3; }
+  hovered = cell;
+  if (cell) { cell.mat.opacity = 0.26; cell.edgeMat.opacity = 0.95; }
+  renderer.domElement.style.cursor = cell ? 'pointer' : 'auto';
+}
+
+let downX = 0, downY = 0;
+renderer.domElement.addEventListener('pointerdown', (ev) => {
+  downX = ev.clientX; downY = ev.clientY;
+  controls.autoRotate = false;
+});
+renderer.domElement.addEventListener('pointermove', (ev) => {
+  if (ev.buttons) return setHover(null); // orbiting
+  const cell = gameOver || isAITurn() ? null : pick(ev);
+  setHover(cell && !cell.piece ? cell : null);
+});
+renderer.domElement.addEventListener('pointerup', (ev) => {
+  if (Math.hypot(ev.clientX - downX, ev.clientY - downY) > 6) return; // was a drag
+  const cell = pick(ev);
+  if (!cell || gameOver || isAITurn() || cell.piece || ev.button !== 0) return;
+  play(cell);
+});
+
+/* ---------- sounds ---------- */
+let actx = null, master = null;
+let soundEnabled = true;
+const soundButton = document.getElementById('sound');
+function unlockAudio() {
+  if (!soundEnabled) return;
+  try {
+    if (!actx) {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      master = actx.createGain();
+      master.gain.value = 0.65;
+      master.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') actx.resume().catch(() => {});
+  } catch { /* Audio support is optional; gameplay must continue without it. */ }
+}
+document.addEventListener('pointerdown', unlockAudio);
+document.addEventListener('keydown', unlockAudio);
+soundButton.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  soundButton.setAttribute('aria-pressed', String(soundEnabled));
+  if (soundEnabled) unlockAudio();
+  if (master) master.gain.setTargetAtTime(soundEnabled ? 0.65 : 0, actx.currentTime, 0.015);
+});
+
+function soundEffect(event, player = 'X') {
+  if (!soundEnabled || !actx || actx.state !== 'running') return;
+  try {
+    const voices = {
+      X: { base: 196, ratios: [1, 2.76, 5.4], decay: 0.16, type: 'triangle' },
+      O: { base: 146.83, ratios: [1, 1.5, 3.02], decay: 0.32, type: 'sine' },
+      'Δ': { base: 293.66, ratios: [1, 2.01, 4.07], decay: 0.23, type: 'sine' }
+    };
+    const voice = voices[player];
+    const notes = event === 'win' ? [[0, 1], [0.13, 1.5], [0.34, 1.25], [0.55, 2]]
+      : event === 'draw' ? [[0, 1], [0.19, 0.75]] : [[0, 1]];
+    for (const [delay, pitch] of notes) {
+      const start = actx.currentTime + 0.01 + delay;
+      const duration = voice.decay * (event === 'move' ? 1 : 2.5);
+      voice.ratios.forEach((ratio, i) => {
+        const osc = actx.createOscillator(), gain = actx.createGain();
+        osc.type = i === 0 ? voice.type : 'sine';
+        const frequency = voice.base * pitch * ratio;
+        osc.frequency.setValueAtTime(frequency * (i === 0 ? 1.06 : 1), start);
+        osc.frequency.exponentialRampToValueAtTime(frequency, start + 0.045);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.075 / (i + 1), start + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration / (1 + i * 0.4));
+        osc.connect(gain).connect(master);
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.start(start);
+        osc.stop(start + duration + 0.02);
+      });
+    }
+  } catch { /* Audio support is optional; gameplay must continue without it. */ }
+}
+
+/* ---------- game flow ---------- */
+const anims = [];
+const easeOutBack = (t) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2; };
+
+function play(cell) {
+  if (gameOver || cell.piece) return;
+  setHover(null);
+  const piece = makePiece(current);
+  piece.position.copy(cell.mesh.position);
+  piece.scale.setScalar(0.001);
+  cellGroup.add(piece);
+  anims.push({ obj: piece, start: performance.now() });
+
+  cell.piece = current;
+  cell.pieceObj = piece;
+  moves++;
+
+  const line = LINES.find((l) => l.every((i) => cells[i].piece === current));
+  if (line) return endRound(current, line);
+  if (moves === 27) return endRound(null, null);
+  soundEffect('move', current);
+  current = players[(players.indexOf(current) + 1) % players.length];
+  updateTurnUI();
+  scheduleAI();
+}
+
+function drawWinLine(line) {
+  const p1 = cells[line[0]].mesh.position;
+  const p2 = cells[line[2]].mesh.position;
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1, 10), mat);
+  cyl.position.copy(p1).add(p2).multiplyScalar(0.5);
+  cyl.scale.y = p1.distanceTo(p2);
+  cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+  scene.add(cyl);
+  return cyl;
+}
+
+function endRound(winner, line) {
+  gameOver = true;
+  cancelAI();
+  setHover(null);
+  if (winner) {
+    score[winner]++;
+    document.getElementById({ X: 'sx', O: 'so', 'Δ': 'sd' }[winner]).textContent = score[winner];
+    const cyl = drawWinLine(line);
+    winFx = { cyl, mat: cyl.material, objs: line.map((i) => cells[i].pieceObj) };
+    setStatus(`${winner} wins! 🎉`, 'end ' + (winner === 'Δ' ? 'delta' : winner.toLowerCase()));
+    soundEffect('win', winner);
+  } else {
+    setStatus(`It's a draw!`, 'end');
+    soundEffect('draw', current);
+  }
+}
+
+function restartRound() {
+  cancelAI();
+  aiFailed = false;
+  setHover(null);
+  anims.length = 0;
+  for (const c of cells) {
+    if (c.pieceObj) {
+      c.pieceObj.children[0].material.dispose();
+      cellGroup.remove(c.pieceObj);
+    }
+    c.piece = null;
+    c.pieceObj = null;
+    c.mat.opacity = 0.07;
+    c.edgeMat.opacity = 0.3;
+  }
+  if (winFx) {
+    scene.remove(winFx.cyl);
+    winFx.cyl.geometry.dispose();
+    winFx.cyl.material.dispose();
+    winFx = null;
+  }
+  gameOver = false;
+  moves = 0;
+  current = 'X';
+  updateTurnUI();
+  scheduleAI();
+}
+
+document.getElementById('restart').addEventListener('click', restartRound);
+document.getElementById('settings').addEventListener('change', () => {
+  players = document.getElementById('player-count').value === '3' ? ['X', 'O', 'Δ'] : ['X', 'O'];
+  document.getElementById('delta-seat').hidden = players.length === 2;
+  document.getElementById('delta-score').hidden = players.length === 2;
+  document.getElementById('rules').textContent = `Connect any straight line of 3. Turn order: ${players.join(' → ')}. Changing settings starts a new match and clears scores.`;
+  for (const [p, id] of [['X', 'sx'], ['O', 'so'], ['Δ', 'sd']]) {
+    score[p] = 0;
+    document.getElementById(id).textContent = '0';
+  }
+  restartRound();
+});
+
+/* ---------- render loop ---------- */
+function animate(now) {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  for (let i = anims.length - 1; i >= 0; i--) {
+    const a = anims[i];
+    const t = Math.min((now - a.start) / 350, 1);
+    a.obj.scale.setScalar(Math.max(0.001, easeOutBack(t)));
+    if (t === 1) anims.splice(i, 1);
+  }
+
+  if (winFx) {
+    winFx.mat.opacity = 0.6 + 0.3 * Math.sin(now * 0.006);
+    const pulse = 1 + 0.08 * Math.sin(now * 0.006);
+    for (const o of winFx.objs) o.scale.setScalar(pulse);
+  }
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+updateTurnUI();
+</script>
+</body>
+</html>

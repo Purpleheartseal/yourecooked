@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Play 3D XO, a free 3×3×3 tic-tac-toe game for two or three players. Challenge local friends or AI opponents and learn to spot winning lines through the cube.">
+<title>3D XO — Tic-tac-toe, with another dimension</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header><nav class="wrap" aria-label="Main navigation"><a class="brand" href="index.html">3D XO</a><div class="links"><a href="#how-to-play">How to play</a><a href="#about">About</a><a href="xo-3d.html">Play game</a></div></nav></header>
+<main class="wrap">
+<div class="hero">
+  <div><p class="eyebrow">27 cells · 49 ways to win</p><h1>Think outside<br>the flat board.</h1><p class="lead">Classic tic-tac-toe moves into a cube. Line up three marks across a row, a layer, or the space between them. Play a friend—or let the AI take the next turn.</p><div class="actions"><a class="button" href="xo-3d.html">Play 3D XO</a><a href="#how-to-play">Learn the rules</a></div><p class="fine">Free to play · No account · Two or three players on one device</p></div>
+  <div class="art" aria-hidden="true"><div class="symbols"><span>X</span> <span>O</span> <span>Δ</span></div></div>
+</div>
+<section id="how-to-play"><h2>A familiar game. A different view.</h2><div class="cards">
+  <article class="card"><h3>1. Pick your players</h3><p>Choose two or three players, then set each seat to Human or AI. X starts, followed by O and, in three-player mode, Δ. Human players take turns on the same device; there is no online matchmaking.</p></article>
+  <article class="card"><h3>2. Explore the cube</h3><p>Drag the board to rotate it and scroll to zoom. Click an empty cell to place your mark. Rotate again if another cell hides the one you want. Touch users can drag to orbit, pinch to zoom, and tap to place.</p></article>
+  <article class="card"><h3>3. Connect three</h3><p>Make a straight line of three of your own marks to win. Lines can run along an axis, diagonally across a plane, or diagonally through the entire cube. A full board with no winning line is a draw.</p></article>
+</div></section>
+<section><div class="copy"><h2>Spot the lines that are easy to miss.</h2><p>Three marks do not need to share a horizontal layer. A vertical column is a winning line too. So is a diagonal from one corner of the cube, through its center, to the opposite corner.</p><p>The 49 winning lines consist of 27 axis-aligned rows, 18 plane diagonals, and four diagonals through the cube. If two marks look lined up, rotate the board to check their depth before choosing your next move.</p><ul><li><strong>Check for an immediate win first.</strong> Then look for opponents with two marks and an empty third cell.</li><li><strong>Watch the center.</strong> It belongs to 13 different winning lines, making it a useful cell to claim early.</li><li><strong>In three-player mode, consider turn order.</strong> The player who moves next may pose a more urgent threat than the one after them.</li></ul></div></section>
+<section><h2>Choose your match.</h2><div class="cards"><article class="card"><h3>You against the AI</h3><p>Use two players with X set to Human and O to AI. The computer searches possible moves with depth-limited minimax and alpha-beta pruning.</p></article><article class="card"><h3>Bring a friend</h3><p>Set both seats to Human for a local match. In three-player mode, you can add another human or let the AI play the third seat.</p></article><article class="card"><h3>Take on two bots</h3><p>Choose three players, keep X as Human, and set O and Δ to AI. The bots use Maxⁿ search: each tries to improve its own outcome rather than working as a team.</p></article></div><p>AI searches have a time and depth limit, so they are not guaranteed to find perfect moves. You can also set every seat to AI and watch a round play out.</p></section>
+<section id="about"><div class="copy"><h2>About 3D XO</h2><p>3D XO is a small browser game built around a simple question: what changes when tic-tac-toe has depth? The board is rendered with Three.js, and AI opponents calculate their moves locally in your browser.</p><p>There are no accounts, downloads to install, or online leaderboards. Scores last for the current page session. Restarting a round keeps the score; changing the player settings starts a new match and clears it. Reloading the page resets the game.</p><p>The game needs a modern browser with WebGL and an internet connection to load its graphics library. The board uses pointer or touch controls; it does not currently support keyboard-only play.</p><div class="actions"><a class="button" href="xo-3d.html">Start a round</a><a href="privacy.html">Read the privacy policy</a></div></div></section>
+</main>
+<footer><div class="wrap footer-inner"><p>3D XO · Play locally. Think in three dimensions.</p><div class="footer-links"><a href="index.html">Home</a><a href="xo-3d.html">Game</a><a href="privacy.html">Privacy</a></div></div></footer>
+</body>
+</html>
