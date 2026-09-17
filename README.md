@@ -4,7 +4,7 @@ Three-dimensional tic-tac-toe on a 3×3×3 cube. Two or three players, on one de
 
 ![You're Cooked game board](screenshot.png)
 
-**[▶ Play](https://Purpleheartseal.github.io/yourecooked/)** — update this link after publishing.
+**[▶ Play](https://purpleheartseal.github.io/)**
 
 ## How to play
 
@@ -22,4 +22,4 @@ The built-in AI plays two-player minimax with alpha-beta pruning, and Maxⁿ for
 
 `index.html` landing page · `xo-3d.html` the game · `privacy.html` policy · `site.css` styles
 
-Built with [Three.js](https://threejs.org/). No backend, no tracking; everything runs in your browser. See the [privacy policy](privacy.html).
+Built with [Three.js](https://threejs.org/). Game logic runs in your browser without a game backend. The game page includes a third-party A-ADS banner. See the [privacy policy](privacy.html).
