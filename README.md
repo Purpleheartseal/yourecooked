@@ -4,7 +4,7 @@ Three-dimensional tic-tac-toe on a 3×3×3 cube. Two or three players, on one de
 
 ![You're Cooked game board](screenshot.png)
 
-**[▶ Play](https://purpleheartseal.github.io/)**
+**[▶ Play](https://purpleheartseal.github.io/yourecooked)**
 
 ## How to play
 
